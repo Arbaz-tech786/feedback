@@ -6,22 +6,40 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
 import logging
+from aws_config_fix import init_aws_clients_with_retry, check_aws_resources_exist, get_resource_status_message
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Initialize AWS clients
+# Initialize AWS clients with improved error handling
 @st.cache_resource
 def init_aws_clients():
-    """Initialize AWS clients with caching"""
+    """Initialize AWS clients with caching and improved error handling"""
     try:
-        dynamodb = boto3.resource('dynamodb')
-        s3 = boto3.client('s3')
-        bedrock_runtime = boto3.client('bedrock-runtime')
+        dynamodb, s3, bedrock_runtime = init_aws_clients_with_retry()
+        
+        if not dynamodb or not s3 or not bedrock_runtime:
+            st.error("❌ Failed to initialize AWS clients. Please check your AWS configuration.")
+            return None, None, None
+        
+        # Check if required resources exist
+        table_names = [IDEAS_TABLE, FINALIZE_REPORT_TABLE, SOCIAL_LENS_TABLE]
+        resource_status = check_aws_resources_exist(dynamodb, s3, bedrock_runtime, table_names, MATCH_MAKING_BUCKET)
+        
+        if not resource_status['all_resources_available']:
+            status_message = get_resource_status_message(resource_status)
+            st.error(f"⚠️ AWS Resource Access Issues:\n{status_message}")
+            st.info("💡 Please ensure all required AWS resources exist and your credentials have proper permissions.")
+            
+            # Still return clients so the app can function with partial resources
+            return dynamodb, s3, bedrock_runtime
+        
         return dynamodb, s3, bedrock_runtime
+        
     except Exception as e:
-        st.error(f"Failed to initialize AWS clients: {str(e)}")
+        st.error(f"❌ Failed to initialize AWS clients: {str(e)}")
+        logger.error(f"AWS client initialization error: {str(e)}")
         return None, None, None
 
 # Configuration
@@ -1068,104 +1086,177 @@ Generate the evaluation questions with analysis now:"""
     return prompt
 
 def get_idea_capture_data(ai_request_id: str) -> Dict:
-    """Get idea capture data from DynamoDB"""
+    """Get idea capture data from DynamoDB with improved error handling"""
     try:
         dynamodb, _, _ = init_aws_clients()
         if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
             return None
         
         table = dynamodb.Table(IDEAS_TABLE)
+        logger.info(f"Attempting to fetch idea capture data for request ID: {ai_request_id}")
+        
         response = table.get_item(Key={'ai_request_id': ai_request_id})
         
         if 'Item' in response:
             item = response['Item']
-            idea_response = json.loads(item.get('idea_response', '{}'))
+            logger.info(f"Found item for request ID: {ai_request_id}")
+            
+            # Parse the idea_response JSON
+            idea_response_str = item.get('idea_response', '{}')
+            if isinstance(idea_response_str, str):
+                idea_response = json.loads(idea_response_str)
+            else:
+                idea_response = idea_response_str
+            
             burning_issues = idea_response.get('finalize', {}).get('burningIssues', [])
             input_metadata = idea_response.get('input_metadata', {})
             domain = extract_domain(input_metadata)
+            
+            logger.info(f"Extracted {len(burning_issues)} burning issues for domain: {domain}")
             
             return {
                 'burning_issues': burning_issues,
                 'domain': domain,
                 'input_metadata': input_metadata
             }
-        return None
+        else:
+            logger.warning(f"No item found for request ID: {ai_request_id}")
+            st.error(f"❌ No data found for request ID: {ai_request_id}")
+            st.info("💡 Please verify that the request ID exists in the database.")
+            return None
     except Exception as e:
-        st.error(f"Error fetching idea capture data: {str(e)}")
+        error_msg = f"Error fetching idea capture data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+        
+        # Provide more specific guidance based on error type
+        if "ResourceNotFoundException" in str(e):
+            st.error("🔍 The DynamoDB table might not exist or your credentials don't have access to it.")
+            st.info("💡 Please check that the table name is correct and your IAM permissions include 'dynamodb:GetItem'.")
+        elif "AccessDenied" in str(e):
+            st.error("🔒 Access denied. Your AWS credentials may not have the necessary permissions.")
+            st.info("💡 Please ensure your IAM role/user has permissions for DynamoDB operations.")
+        
         return None
 
 def get_lens_selector_data(ai_request_id: str) -> Dict:
-    """Get lens selector data from DynamoDB"""
+    """Get lens selector data from DynamoDB with improved error handling"""
     try:
         dynamodb, _, _ = init_aws_clients()
         if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
             return None
         
         table = dynamodb.Table(IDEAS_TABLE)
+        logger.info(f"Attempting to fetch lens selector data for request ID: {ai_request_id}")
+        
         response = table.get_item(Key={'ai_request_id': ai_request_id})
         
         if 'Item' in response:
             item = response['Item']
-            lens_selector = json.loads(item.get('lens_selector', '{}'))
+            logger.info(f"Found item for request ID: {ai_request_id}")
+            
+            # Parse the lens_selector JSON
+            lens_selector_str = item.get('lens_selector', '{}')
+            if isinstance(lens_selector_str, str):
+                lens_selector = json.loads(lens_selector_str)
+            else:
+                lens_selector = lens_selector_str
+            
             results = lens_selector.get('result', {}).get('results', [])
             input_data = lens_selector.get('result', {}).get('input', {})
             domain = extract_domain(input_data)
             
             # Get burning issues summary
-            idea_response = json.loads(item.get('idea_response', '{}'))
+            idea_response_str = item.get('idea_response', '{}')
+            if isinstance(idea_response_str, str):
+                idea_response = json.loads(idea_response_str)
+            else:
+                idea_response = idea_response_str
+                
             burning_issues = idea_response.get('finalize', {}).get('burningIssues', [])
             burning_issues_summary = [issue.get('title', '') for issue in burning_issues]
+            
+            logger.info(f"Extracted {len(results)} lens results for domain: {domain}")
             
             return {
                 'results': results,
                 'domain': domain,
                 'burning_issues_summary': burning_issues_summary
             }
-        return None
+        else:
+            logger.warning(f"No item found for request ID: {ai_request_id}")
+            st.error(f"❌ No lens selector data found for request ID: {ai_request_id}")
+            return None
     except Exception as e:
-        st.error(f"Error fetching lens selector data: {str(e)}")
+        error_msg = f"Error fetching lens selector data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
         return None
 
 def get_survey_generator_data(ai_request_id: str) -> Dict:
-    """Get survey generator data from DynamoDB"""
+    """Get survey generator data from DynamoDB with improved error handling"""
     try:
         dynamodb, _, _ = init_aws_clients()
         if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
             return None
         
         table = dynamodb.Table(IDEAS_TABLE)
+        logger.info(f"Attempting to fetch survey generator data for request ID: {ai_request_id}")
+        
         response = table.get_item(Key={'ai_request_id': ai_request_id})
         
         if 'Item' in response:
             item = response['Item']
-            survey_generator = json.loads(item.get('survey_generator', '{}'))
+            logger.info(f"Found item for request ID: {ai_request_id}")
+            
+            # Parse the survey_generator JSON
+            survey_generator_str = item.get('survey_generator', '{}')
+            if isinstance(survey_generator_str, str):
+                survey_generator = json.loads(survey_generator_str)
+            else:
+                survey_generator = survey_generator_str
+                
             questions = survey_generator.get('questions', [])
             input_data = survey_generator.get('input', {})
             domain = extract_domain(input_data)
             burning_issues = input_data.get('burningIssues', [])
+            
+            logger.info(f"Extracted {len(questions)} survey questions for domain: {domain}")
             
             return {
                 'questions': questions,
                 'domain': domain,
                 'burning_issues': burning_issues
             }
-        return None
+        else:
+            logger.warning(f"No item found for request ID: {ai_request_id}")
+            st.error(f"❌ No survey generator data found for request ID: {ai_request_id}")
+            return None
     except Exception as e:
-        st.error(f"Error fetching survey generator data: {str(e)}")
+        error_msg = f"Error fetching survey generator data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
         return None
 
 def get_360_report_data(ai_request_id: str) -> Dict:
-    """Get 360 report data from DynamoDB"""
+    """Get 360 report data from DynamoDB with improved error handling"""
     try:
         dynamodb, _, _ = init_aws_clients()
         if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
             return None
 
         table = dynamodb.Table(FINALIZE_REPORT_TABLE)
+        logger.info(f"Attempting to fetch 360 report data for request ID: {ai_request_id}")
+        
         response = table.get_item(Key={'ai_request_id': ai_request_id})
 
         if 'Item' in response:
             item = response['Item']
+            logger.info(f"Found item for request ID: {ai_request_id}")
 
             # Handle both string and dict types for report_json
             report_json_raw = item.get('report_json', '{}')
@@ -1178,29 +1269,45 @@ def get_360_report_data(ai_request_id: str) -> Dict:
             composite_score = report_json.get('verdict', {}).get('compositeScore', 0)
             confidence = report_json.get('verdict', {}).get('confidence', '0')
 
+            logger.info(f"Extracted 360 report verdict: {verdict}, score: {composite_score}")
+
             return {
                 'verdict': verdict,
                 'composite_score': composite_score,
                 'confidence': confidence
             }
-        return None
+        else:
+            logger.warning(f"No item found for request ID: {ai_request_id}")
+            st.error(f"❌ No 360 report data found for request ID: {ai_request_id}")
+            return None
     except Exception as e:
-        logger.error(f"Error fetching 360 report data: {str(e)}")
-        st.error(f"Error fetching 360 report data: {str(e)}")
+        error_msg = f"Error fetching 360 report data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+        
+        # Provide specific guidance for common errors
+        if "ResourceNotFoundException" in str(e):
+            st.error("🔍 The FINALIZE_REPORT_TABLE might not exist or your credentials don't have access to it.")
+            st.info("💡 Please check that the table name is correct and your IAM permissions include 'dynamodb:GetItem'.")
+        
         return None
 
 def get_social_lens_data(ai_request_id: str) -> Dict:
-    """Get social lens data from DynamoDB"""
+    """Get social lens data from DynamoDB with improved error handling"""
     try:
         dynamodb, _, _ = init_aws_clients()
         if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
             return None
 
         table = dynamodb.Table(SOCIAL_LENS_TABLE)
+        logger.info(f"Attempting to fetch social lens data for request ID: {ai_request_id}")
+        
         response = table.get_item(Key={'request_id': ai_request_id})
 
         if 'Item' in response:
             item = response['Item']
+            logger.info(f"Found item for request ID: {ai_request_id}")
 
             # Handle both string and dict types for social_lens_analysis_json
             social_analysis_raw = item.get('social_lens_analysis_json', '{}')
@@ -1213,22 +1320,35 @@ def get_social_lens_data(ai_request_id: str) -> Dict:
             buzz_level = social_analysis.get('buzz_level', 'Unknown')
             sources = social_analysis.get('sources', [])
 
+            logger.info(f"Extracted social lens data: buzz score {buzz_score}, level {buzz_level}")
+
             return {
                 'buzz_score': buzz_score,
                 'buzz_level': buzz_level,
                 'sources': sources
             }
-        return None
+        else:
+            logger.warning(f"No item found for request ID: {ai_request_id}")
+            st.error(f"❌ No social lens data found for request ID: {ai_request_id}")
+            return None
     except Exception as e:
-        logger.error(f"Error fetching social lens data: {str(e)}")
-        st.error(f"Error fetching social lens data: {str(e)}")
+        error_msg = f"Error fetching social lens data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+        
+        # Provide specific guidance for common errors
+        if "ResourceNotFoundException" in str(e):
+            st.error("🔍 The SOCIAL_LENS_TABLE might not exist or your credentials don't have access to it.")
+            st.info("💡 Please check that the table name is correct and your IAM permissions include 'dynamodb:GetItem'.")
+        
         return None
 
 def get_match_maker_data(ai_request_id: str, persona_type: str) -> Dict:
-    """Get match maker data from S3"""
+    """Get match maker data from S3 with improved error handling"""
     try:
         _, s3, _ = init_aws_clients()
         if not s3:
+            st.error("❌ Cannot access S3. AWS clients not initialized properly.")
             return None
         
         # Determine S3 path
@@ -1243,7 +1363,10 @@ def get_match_maker_data(ai_request_id: str, persona_type: str) -> Dict:
             prefix = 'match-making/RESPONDENT-matching/'
             file_pattern = f'{ai_request_id}_respondent_matching_'
         else:
+            st.error(f"❌ Invalid persona type: {persona_type}")
             return None
+        
+        logger.info(f"Attempting to fetch match maker data for request ID: {ai_request_id}, persona: {persona_type}")
         
         # List objects
         objects = s3.list_objects_v2(
@@ -1252,6 +1375,9 @@ def get_match_maker_data(ai_request_id: str, persona_type: str) -> Dict:
         )
         
         if 'Contents' not in objects:
+            logger.warning(f"No objects found in S3 bucket {MATCH_MAKING_BUCKET} with prefix {prefix}")
+            st.error(f"❌ No match maker data found for request ID: {ai_request_id}")
+            st.info(f"💡 Checked S3 bucket '{MATCH_MAKING_BUCKET}' with prefix '{prefix}'")
             return None
         
         # Find the file with the highest number
@@ -1269,7 +1395,11 @@ def get_match_maker_data(ai_request_id: str, persona_type: str) -> Dict:
                         latest_file = key
         
         if not latest_file:
+            logger.warning(f"No matching files found for pattern: {file_pattern}")
+            st.error(f"❌ No match maker files found for request ID: {ai_request_id}")
             return None
+        
+        logger.info(f"Found latest match maker file: {latest_file}")
         
         # Get the file
         response = s3.get_object(Bucket=MATCH_MAKING_BUCKET, Key=latest_file)
@@ -1277,14 +1407,28 @@ def get_match_maker_data(ai_request_id: str, persona_type: str) -> Dict:
         
         matches = match_data.get('matches', [])
         if matches:
+            logger.info(f"Extracted {len(matches)} matches from S3")
             return {
                 'selected_match': matches[0],  # Assume first is selected
                 'matches': matches
             }
         
+        logger.warning(f"No matches found in file: {latest_file}")
+        st.error(f"❌ No matches found in match maker data for request ID: {ai_request_id}")
         return None
     except Exception as e:
-        st.error(f"Error fetching match maker data: {str(e)}")
+        error_msg = f"Error fetching match maker data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+        
+        # Provide specific guidance for common errors
+        if "NoSuchBucket" in str(e):
+            st.error(f"🔍 The S3 bucket '{MATCH_MAKING_BUCKET}' does not exist or is not accessible.")
+            st.info("💡 Please check that the bucket name is correct and your IAM permissions include 's3:ListBucket' and 's3:GetObject'.")
+        elif "AccessDenied" in str(e):
+            st.error("🔒 Access denied to S3. Your AWS credentials may not have the necessary permissions.")
+            st.info("💡 Please ensure your IAM role/user has permissions for S3 operations.")
+        
         return None
 
 def generate_feedback_questions(stage: str, ai_request_id: str, persona_type: str = None) -> List[Dict]:
@@ -1476,6 +1620,45 @@ with st.sidebar:
 
 # Main content area
 col1, col2 = st.columns([2, 1])
+
+# Add AWS status check at the top
+with st.expander("🔍 AWS System Status", expanded=False):
+    st.write("Checking AWS resource availability...")
+    
+    try:
+        dynamodb, s3, bedrock_runtime = init_aws_clients()
+        if dynamodb and s3 and bedrock_runtime:
+            table_names = [IDEAS_TABLE, FINALIZE_REPORT_TABLE, SOCIAL_LENS_TABLE]
+            resource_status = check_aws_resources_exist(dynamodb, s3, bedrock_runtime, table_names, MATCH_MAKING_BUCKET)
+            
+            status_message = get_resource_status_message(resource_status)
+            if resource_status['all_resources_available']:
+                st.success(status_message)
+            else:
+                st.error(status_message)
+                
+            # Show detailed status
+            st.subheader("Detailed Status")
+            
+            # DynamoDB tables
+            st.write("**DynamoDB Tables:**")
+            for table_name, exists in resource_status['dynamodb_tables'].items():
+                status_icon = "✅" if exists else "❌"
+                st.write(f"{status_icon} {table_name}: {'Accessible' if exists else 'Not found or inaccessible'}")
+            
+            # S3 bucket
+            st.write("**S3 Bucket:**")
+            bucket_status = "✅" if resource_status['s3_bucket'] else "❌"
+            st.write(f"{bucket_status} {MATCH_MAKING_BUCKET}: {'Accessible' if resource_status['s3_bucket'] else 'Not found or inaccessible'}")
+            
+            # Bedrock access
+            st.write("**Bedrock Runtime:**")
+            bedrock_status = "✅" if resource_status['bedrock_access'] else "❌"
+            st.write(f"{bedrock_status} Bedrock Runtime: {'Accessible' if resource_status['bedrock_access'] else 'Not accessible'}")
+        else:
+            st.error("❌ Failed to initialize AWS clients. Please check your AWS configuration.")
+    except Exception as e:
+        st.error(f"❌ Error checking AWS status: {str(e)}")
 
 with col1:
     st.header("Feedback Questions")
