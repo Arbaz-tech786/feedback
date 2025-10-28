@@ -42,12 +42,21 @@ def init_aws_clients():
         logger.error(f"AWS client initialization error: {str(e)}")
         return None, None, None
 
-# Configuration
-IDEAS_TABLE = os.environ.get('IDEAS_TABLE', 'ideas')
-FINALIZE_REPORT_TABLE = os.environ.get('FINALIZE_REPORT_TABLE', 'finalize_report')
-SOCIAL_LENS_TABLE = os.environ.get('SOCIAL_LENS_TABLE', 'Social_Lens')
-MATCH_MAKING_BUCKET = os.environ.get('MATCH_MAKING_BUCKET', 'outlawml-testing')
-BEDROCK_MODEL_ID = os.environ.get('BEDROCK_MODEL_ID', 'anthropic.claude-3-sonnet-20240229-v1:0')
+# Configuration - Load from Streamlit secrets or environment variables
+def get_config(key: str, default: str) -> str:
+    """Get configuration from Streamlit secrets or environment variables"""
+    try:
+        if hasattr(st, 'secrets') and key in st.secrets:
+            return st.secrets[key]
+    except Exception:
+        pass
+    return os.environ.get(key, default)
+
+IDEAS_TABLE = get_config('IDEAS_TABLE', 'ideas')
+FINALIZE_REPORT_TABLE = get_config('FINALIZE_REPORT_TABLE', 'finalize_report')
+SOCIAL_LENS_TABLE = get_config('SOCIAL_LENS_TABLE', 'Social_Lens')
+MATCH_MAKING_BUCKET = get_config('MATCH_MAKING_BUCKET', 'outlawml-testing')
+BEDROCK_MODEL_ID = get_config('BEDROCK_MODEL_ID', 'anthropic.claude-3-sonnet-20240229-v1:0')
 
 # Initialize session state
 if 'questions' not in st.session_state:
