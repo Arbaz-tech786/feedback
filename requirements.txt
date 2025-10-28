@@ -1,0 +1,6 @@
+fastapi
+pydantic
+anthropic
+streamlit
+uvicorn
+boto3
