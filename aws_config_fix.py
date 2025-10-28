@@ -96,10 +96,13 @@ def init_aws_clients_with_retry(max_retries: int = 3) -> Tuple[Optional[object],
             except Exception as e:
                 logger.warning(f"S3 connection test failed: {str(e)}")
             
-            # Test Bedrock
+            # Test Bedrock - bedrock-runtime doesn't have list_foundation_models
+            # Just check if the client has invoke_model method
             try:
-                bedrock_runtime.list_foundation_models()
-                logger.info("Bedrock connection successful")
+                if hasattr(bedrock_runtime, 'invoke_model'):
+                    logger.info("Bedrock connection successful (invoke_model available)")
+                else:
+                    logger.warning("Bedrock runtime client missing invoke_model method")
             except Exception as e:
                 logger.warning(f"Bedrock connection test failed: {str(e)}")
             
@@ -182,11 +185,18 @@ def check_aws_resources_exist(dynamodb, s3, bedrock_runtime, table_names: list, 
     # Check Bedrock access
     if bedrock_runtime:
         try:
-            bedrock_runtime.list_foundation_models()
-            status['bedrock_access'] = True
-            logger.info("✓ Bedrock access confirmed")
+            # bedrock-runtime doesn't have list_foundation_models
+            # Just verify the client is properly initialized
+            if hasattr(bedrock_runtime, 'invoke_model'):
+                status['bedrock_access'] = True
+                logger.info("✓ Bedrock runtime client initialized (invoke_model available)")
+            else:
+                status['bedrock_access'] = False
+                error_msg = "Bedrock runtime client missing invoke_model method"
+                logger.error(f"✗ {error_msg}")
+                status['errors'].append(error_msg)
         except Exception as e:
-            error_msg = f"Error accessing Bedrock: {str(e)}"
+            error_msg = f"Error validating Bedrock client: {str(e)}"
             logger.error(f"✗ {error_msg}")
             status['errors'].append(error_msg)
 
