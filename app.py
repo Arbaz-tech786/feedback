@@ -24,7 +24,8 @@ def init_aws_clients():
             return None, None, None
         
         # Check if required resources exist
-        table_names = [IDEAS_TABLE, FINALIZE_REPORT_TABLE, SOCIAL_LENS_TABLE]
+        table_names = [IDEAS_TABLE, FINALIZE_REPORT_TABLE, SOCIAL_LENS_TABLE,
+                      FORM_RESPONSES_TABLE, MEETING_SUMMARY_TABLE, FEEDBACK_TABLE]
         resource_status = check_aws_resources_exist(dynamodb, s3, bedrock_runtime, table_names, MATCH_MAKING_BUCKET)
         
         if not resource_status['all_resources_available']:
@@ -56,6 +57,9 @@ IDEAS_TABLE = get_config('IDEAS_TABLE', 'ideas')
 FINALIZE_REPORT_TABLE = get_config('FINALIZE_REPORT_TABLE', 'finalize_report')
 SOCIAL_LENS_TABLE = get_config('SOCIAL_LENS_TABLE', 'Social_Lens')
 MATCH_MAKING_BUCKET = get_config('MATCH_MAKING_BUCKET', 'outlawml-testing')
+FORM_RESPONSES_TABLE = get_config('FORM_RESPONSES_TABLE', 'form_responses')
+MEETING_SUMMARY_TABLE = get_config('MEETING_SUMMARY_TABLE', 'meeting_summary')
+FEEDBACK_TABLE = get_config('FEEDBACK_TABLE', 'feedback')
 BEDROCK_MODEL_ID = get_config('BEDROCK_MODEL_ID', 'anthropic.claude-3-sonnet-20240229-v1:0')
 
 # Initialize session state
@@ -300,6 +304,114 @@ def get_fallback_options(question_focus: str) -> List[Dict]:
             {"value": "good_overlap", "label": "Good overlap"},
             {"value": "partial_fit", "label": "Partial fit"},
             {"value": "weak_fit", "label": "Weak fit"}
+        ],
+
+        # Survey Analysis focus areas
+        'segment_accuracy': [
+            {"value": "matches_reality", "label": "Matches reality"},
+            {"value": "mostly_accurate", "label": "Mostly accurate"},
+            {"value": "some_gaps", "label": "Some gaps"},
+            {"value": "way_off", "label": "Way off"}
+        ],
+        'pain_point_identification': [
+            {"value": "real_pains", "label": "Real pain points"},
+            {"value": "mostly_real", "label": "Mostly real"},
+            {"value": "some_accuracy", "label": "Some accuracy"},
+            {"value": "missed_reality", "label": "Missed reality"}
+        ],
+        'opportunity_quality': [
+            {"value": "actionable_opps", "label": "Actionable"},
+            {"value": "mostly_actionable", "label": "Mostly actionable"},
+            {"value": "vague_opps", "label": "Vague"},
+            {"value": "not_actionable", "label": "Not actionable"}
+        ],
+        'sentiment_calibration': [
+            {"value": "accurate_sentiment", "label": "Accurate"},
+            {"value": "mostly_accurate", "label": "Mostly accurate"},
+            {"value": "somewhat_off", "label": "Somewhat off"},
+            {"value": "way_off", "label": "Way off"}
+        ],
+        'strategic_clarity': [
+            {"value": "very_clear", "label": "Very clear"},
+            {"value": "clear", "label": "Clear"},
+            {"value": "somewhat_clear", "label": "Somewhat clear"},
+            {"value": "unclear", "label": "Unclear"}
+        ],
+
+        # Meeting Summary focus areas
+        'prep_relevance': [
+            {"value": "right_on_target", "label": "Right on target"},
+            {"value": "mostly_helpful", "label": "Mostly helpful"},
+            {"value": "some_value", "label": "Some value"},
+            {"value": "off_target", "label": "Off target"}
+        ],
+        'summary_completeness': [
+            {"value": "comprehensive", "label": "Comprehensive"},
+            {"value": "good_coverage", "label": "Good coverage"},
+            {"value": "missing_some", "label": "Missing some"},
+            {"value": "incomplete", "label": "Incomplete"}
+        ],
+        'actionability': [
+            {"value": "highly_actionable", "label": "Highly actionable"},
+            {"value": "actionable", "label": "Actionable"},
+            {"value": "somewhat_actionable", "label": "Somewhat"},
+            {"value": "not_actionable", "label": "Not actionable"}
+        ],
+        'clarity': [
+            {"value": "crystal_clear", "label": "Crystal clear"},
+            {"value": "clear", "label": "Clear"},
+            {"value": "somewhat_clear", "label": "Somewhat clear"},
+            {"value": "vague", "label": "Vague"}
+        ],
+        'prioritization': [
+            {"value": "perfect_priority", "label": "Perfect priority"},
+            {"value": "good_priority", "label": "Good priority"},
+            {"value": "poor_priority", "label": "Poor priority"},
+            {"value": "no_priority", "label": "No priority"}
+        ],
+        'time_efficiency': [
+            {"value": "very_efficient", "label": "Very efficient"},
+            {"value": "efficient", "label": "Efficient"},
+            {"value": "somewhat_efficient", "label": "Somewhat"},
+            {"value": "time_waster", "label": "Time waster"}
+        ],
+
+        # Transcript Summary focus areas
+        'insight_accuracy': [
+            {"value": "spot_on", "label": "Spot on"},
+            {"value": "mostly_right", "label": "Mostly right"},
+            {"value": "partially_right", "label": "Partially right"},
+            {"value": "missed_key_points", "label": "Missed key points"}
+        ],
+        'confidence_calibration': [
+            {"value": "well_calibrated", "label": "Well calibrated"},
+            {"value": "mostly_calibrated", "label": "Mostly calibrated"},
+            {"value": "overconfident", "label": "Overconfident"},
+            {"value": "underconfident", "label": "Underconfident"}
+        ],
+        'impact_assessment': [
+            {"value": "correct_impact", "label": "Correct impact"},
+            {"value": "mostly_correct", "label": "Mostly correct"},
+            {"value": "some_misses", "label": "Some misses"},
+            {"value": "wrong_priorities", "label": "Wrong priorities"}
+        ],
+        'quote_relevance': [
+            {"value": "perfect_quotes", "label": "Perfect quotes"},
+            {"value": "good_quotes", "label": "Good quotes"},
+            {"value": "fair_quotes", "label": "Fair quotes"},
+            {"value": "poor_quotes", "label": "Poor quotes"}
+        ],
+        'completeness': [
+            {"value": "got_everything", "label": "Got everything"},
+            {"value": "got_most", "label": "Got most"},
+            {"value": "missed_some", "label": "Missed some"},
+            {"value": "missed_a_lot", "label": "Missed a lot"}
+        ],
+        'persona_detection': [
+            {"value": "correct_persona", "label": "Correct persona"},
+            {"value": "close_enough", "label": "Close enough"},
+            {"value": "somewhat_off", "label": "Somewhat off"},
+            {"value": "wrong_persona", "label": "Wrong persona"}
         ],
 
         # Generic fallbacks
@@ -1094,6 +1206,346 @@ Generate the evaluation questions with analysis now:"""
 
     return prompt
 
+def build_survey_analysis_prompt(batch_insights: Dict, clusters: List[Dict],
+                                 sentiment_analysis: Dict, executive_summary: Dict) -> str:
+    """Build the enhanced prompt for the Survey Analysis agent"""
+
+    # Extract key metrics
+    key_themes = batch_insights.get('key_themes', [])
+    pain_points = batch_insights.get('pain_points', [])
+    opportunities = batch_insights.get('opportunities', [])
+
+    num_clusters = len(clusters)
+    primary_segment = executive_summary.get('primary_segment', 'Unknown')
+    market_opportunity = executive_summary.get('market_opportunity', 'Unknown')
+
+    # Build themes text
+    themes_text = "\n".join([f"  • {theme}" for theme in key_themes[:3]]) if key_themes else "  • No themes identified"
+
+    # Build clusters summary
+    clusters_text = ""
+    for i, cluster in enumerate(clusters[:3], 1):
+        title = cluster.get('title', f'Segment {i}')
+        pain_intensity = cluster.get('pain_intensity', 0)
+        clusters_text += f"  {i}. {title} (pain intensity: {pain_intensity}/10)\n"
+
+    # Sentiment breakdown
+    overall_sentiment = sentiment_analysis.get('overall_sentiment', {})
+
+    prompt = f"""You are an expert Meta-Feedback Generator specializing in evaluating AI-powered survey analysis for startups.
+
+═══════════════════════════════════════════════════════════════════════════════
+AGENT BEING EVALUATED: Survey Analysis Agent
+ROLE: Analyzes batch survey responses to extract customer insights, segments, and opportunities
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTEXT & AGENT OUTPUT:
+The Survey Analysis agent processed survey responses and generated this analysis:
+
+BATCH INSIGHTS:
+Key Themes Identified:
+{themes_text}
+
+Top Pain Points: {len(pain_points)} identified
+Opportunities: {len(opportunities)} identified
+
+CUSTOMER SEGMENTS:
+{clusters_text}
+Total Segments: {num_clusters}
+
+SENTIMENT ANALYSIS:
+Overall Sentiment: {overall_sentiment}
+
+EXECUTIVE SUMMARY:
+• Primary Target Segment: {primary_segment}
+• Market Opportunity: {market_opportunity}
+
+═══════════════════════════════════════════════════════════════════════════════
+YOUR TASK:
+Generate 1-2 critical evaluation questions that assess the quality and actionability of this survey analysis.
+
+EVALUATION CRITERIA TO CONSIDER:
+1. **Insight Depth**: Are the identified themes/patterns truly insightful vs superficial?
+2. **Segmentation Quality**: Are customer segments meaningfully distinct and actionable?
+3. **Pain Point Accuracy**: Do pain points reflect real customer frustrations?
+4. **Opportunity Identification**: Are opportunities realistic and specific?
+5. **Sentiment Calibration**: Is sentiment analysis accurate and nuanced?
+6. **Executive Summary**: Is the strategic guidance clear and actionable?
+
+WHY SURVEY ANALYSIS QUALITY MATTERS:
+Poor survey analysis leads to:
+- Misidentified customer segments (wasting marketing budget)
+- False confidence in wrong pain points
+- Missed real opportunities hidden in responses
+- Strategic decisions based on surface-level patterns
+
+EXAMPLES OF EXCELLENT EVALUATION QUESTIONS:
+✓ "Do these customer segments match your actual market?" (segmentation accuracy)
+✓ "How well did we identify your customers' real pain points?" (insight quality)
+✓ "Actionability of our opportunity recommendations?" (strategic value)
+
+EXAMPLES OF POOR EVALUATION QUESTIONS:
+✗ "What are your customer segments?" (asking user to do AI's job)
+✗ "Do you like survey analysis?" (not evaluating output quality)
+
+ANALYSIS & OUTPUT FORMAT:
+
+STEP 1: Analyze survey analysis quality
+- Are segments based on meaningful behavioral/attitudinal differences?
+- Are themes actually patterns vs just word frequency?
+- Do pain points have clear intensity/priority ordering?
+- Are opportunities specific and testable?
+
+STEP 2: Generate output in this EXACT JSON format:
+{{
+  "questions": [
+    {{
+      "id": "q1",
+      "text": "Critical evaluation question (max 150 chars)",
+      "type": "multiple_choice",
+      "focus_area": "segment_accuracy|insight_depth|pain_point_identification|opportunity_quality|sentiment_calibration|strategic_clarity",
+      "options": [
+        {{"value": "matches_reality", "label": "Context-specific label for HIGH ACCURACY"}},
+        {{"value": "mostly_accurate", "label": "Context-specific label for MOSTLY ACCURATE"}},
+        {{"value": "some_gaps", "label": "Context-specific label for PARTIAL ACCURACY"}},
+        {{"value": "way_off", "label": "Context-specific label for INACCURATE"}}
+      ],
+      "rl_value": 0.91
+    }},
+    {{
+      "id": "q2",
+      "text": "Optional second question (max 150 chars)",
+      "type": "multiple_choice",
+      "focus_area": "segment_accuracy|insight_depth|pain_point_identification|opportunity_quality|sentiment_calibration|strategic_clarity",
+      "options": [
+        {{"value": "actionable_opps", "label": "Context-specific label"}},
+        {{"value": "mostly_actionable", "label": "Context-specific label"}},
+        {{"value": "vague_opps", "label": "Context-specific label"}},
+        {{"value": "not_actionable", "label": "Context-specific label"}}
+      ],
+      "rl_value": 0.87
+    }}
+  ],
+  "analysis_summary": "2-3 sentence summary of survey analysis quality. Example: 'Identified {num_clusters} customer segments with clear differentiation. Primary segment ({primary_segment}) aligns with market opportunity. Pain points show good specificity. Overall: Strong insights.'"
+}}
+
+IMPORTANT CONSTRAINTS:
+- MUST generate EXACTLY 2 questions
+- Each question MUST be under 150 characters
+- Use "focus_area" with specific names
+- Generate OPTIONS directly (context-specific)
+- Include "analysis_summary"
+- RL values: 0.85-0.93 range
+- Return ONLY valid JSON
+
+Generate the evaluation questions with analysis now:"""
+
+    return prompt
+
+def build_meeting_summary_prompt(bullet_points: str, persona_type: str, meeting_id: str) -> str:
+    """Build the enhanced prompt for the Meeting Summary agent"""
+
+    # Extract a brief preview of bullet points
+    bullet_preview = bullet_points[:200] + "..." if len(bullet_points) > 200 else bullet_points
+
+    prompt = f"""You are an expert Meta-Feedback Generator specializing in evaluating AI-generated meeting preparation summaries.
+
+═══════════════════════════════════════════════════════════════════════════════
+AGENT BEING EVALUATED: Meeting Summary Agent
+ROLE: Generates concise, actionable meeting preparation summaries for {persona_type} conversations
+MEETING ID: {meeting_id}
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTEXT & AGENT OUTPUT:
+The Meeting Summary agent analyzed the meeting context and generated this summary:
+
+{persona_type} MEETING SUMMARY PREVIEW:
+{bullet_preview}
+
+This summary is designed to help founders prepare efficiently for high-value conversations with {persona_type}s.
+
+═══════════════════════════════════════════════════════════════════════════════
+YOUR TASK:
+Generate 1-2 focused evaluation questions that assess the usefulness and accuracy of this meeting summary.
+
+EVALUATION CRITERIA TO CONSIDER:
+1. **Relevance**: Are the bullet points relevant to the actual meeting context?
+2. **Actionability**: Can the founder act on these preparation points?
+3. **Completeness**: Are critical preparation areas missing?
+4. **Clarity**: Are points clear and specific vs vague?
+5. **Time Efficiency**: Does this save time vs overwhelm with detail?
+
+WHY MEETING SUMMARY QUALITY MATTERS:
+Poor summaries lead to unprepared founders wasting expert time.
+Good summaries enable focused, productive conversations.
+
+EXAMPLES OF EXCELLENT EVALUATION QUESTIONS:
+✓ "How relevant are these prep points to your actual meeting?" (relevance check)
+✓ "Completeness of our {persona_type} meeting summary?" (coverage assessment)
+✓ "Can you act on these preparation guidelines?" (actionability test)
+
+EXAMPLES OF POOR EVALUATION QUESTIONS:
+✗ "What should you prepare for the meeting?" (asking user to do AI's job)
+
+ANALYSIS & OUTPUT FORMAT:
+
+STEP 2: Generate output in this EXACT JSON format:
+{{
+  "questions": [
+    {{
+      "id": "q1",
+      "text": "Focused evaluation question (max 150 chars)",
+      "type": "multiple_choice",
+      "focus_area": "prep_relevance|summary_completeness|actionability|clarity|prioritization|time_efficiency",
+      "options": [
+        {{"value": "right_on_target", "label": "Context-specific label for HIGH RELEVANCE"}},
+        {{"value": "mostly_helpful", "label": "Context-specific label for MOSTLY RELEVANT"}},
+        {{"value": "some_value", "label": "Context-specific label for SOMEWHAT RELEVANT"}},
+        {{"value": "off_target", "label": "Context-specific label for NOT RELEVANT"}}
+      ],
+      "rl_value": 0.89
+    }},
+    {{
+      "id": "q2",
+      "text": "Optional second question (max 150 chars)",
+      "type": "multiple_choice",
+      "focus_area": "prep_relevance|summary_completeness|actionability|clarity|prioritization|time_efficiency",
+      "options": [
+        {{"value": "comprehensive", "label": "Context-specific label"}},
+        {{"value": "good_coverage", "label": "Context-specific label"}},
+        {{"value": "missing_some", "label": "Context-specific label"}},
+        {{"value": "incomplete", "label": "Context-specific label"}}
+      ],
+      "rl_value": 0.84
+    }}
+  ],
+  "analysis_summary": "2-3 sentence summary of meeting summary quality. Example: 'Generated {persona_type} meeting prep with specific points. Bullet points are actionable and time-efficient. Overall: Good execution.'"
+}}
+
+IMPORTANT CONSTRAINTS:
+- MUST generate EXACTLY 2 questions
+- Each question MUST be under 150 characters
+- Use "focus_area" with specific names
+- Generate OPTIONS directly
+- Include "analysis_summary"
+- RL values: 0.82-0.91 range
+- Return ONLY valid JSON
+
+Generate the evaluation questions with analysis now:"""
+
+    return prompt
+
+def build_transcript_summary_prompt(insights: List[Dict], quotes: List[Dict], persona_type: str) -> str:
+    """Build the enhanced prompt for the Transcript Summary agent"""
+
+    # Calculate insight metrics
+    num_insights = len(insights)
+    high_confidence_insights = len([i for i in insights if i.get('confidence_score', 0) >= 8.0])
+    high_impact_insights = len([i for i in insights if i.get('impact_level', '').lower() in ['high_impact', 'game_changer']])
+
+    # Extract sample insights
+    sample_insights = "\n".join([
+        f"  • {insight.get('insight', '')[:80]}... (confidence: {insight.get('confidence_score', 0):.1f}, impact: {insight.get('impact_level', 'unknown')})"
+        for insight in insights[:3]
+    ])
+
+    # Quote metrics
+    num_quotes = len(quotes)
+    high_relevance_quotes = len([q for q in quotes if q.get('relevance_score', 0) >= 8.0])
+
+    prompt = f"""You are an expert Meta-Feedback Generator specializing in evaluating AI-powered transcript analysis for startup validation conversations.
+
+═══════════════════════════════════════════════════════════════════════════════
+AGENT BEING EVALUATED: Transcript Summary Agent
+ROLE: Analyzes meeting transcripts to extract key insights and supporting quotes
+PERSONA TYPE: {persona_type.upper()}
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTEXT & AGENT OUTPUT:
+The Transcript Summary agent processed the meeting transcript and generated:
+
+INSIGHTS EXTRACTED:
+Total Insights: {num_insights}
+High Confidence (≥8.0): {high_confidence_insights}
+High Impact: {high_impact_insights}
+
+Sample Insights:
+{sample_insights}
+
+SUPPORTING QUOTES:
+Total Quotes: {num_quotes}
+High Relevance (≥8.0): {high_relevance_quotes}
+
+═══════════════════════════════════════════════════════════════════════════════
+YOUR TASK:
+Generate 1-2 sharp evaluation questions that assess the quality and usefulness of this transcript analysis.
+
+EVALUATION CRITERIA TO CONSIDER:
+1. **Insight Quality**: Are insights genuinely valuable vs obvious/superficial?
+2. **Confidence Calibration**: Are confidence scores appropriately set?
+3. **Impact Assessment**: Are high-impact insights correctly identified?
+4. **Quote Relevance**: Do quotes effectively support insights?
+5. **Completeness**: Are key moments from the conversation captured?
+
+WHY TRANSCRIPT ANALYSIS QUALITY MATTERS:
+Poor analysis leads to missing critical validation signals from expert conversations.
+Good analysis enables efficient knowledge extraction from expert time.
+
+EXAMPLES OF EXCELLENT EVALUATION QUESTIONS:
+✓ "How accurately did we capture the key insights?" (insight quality)
+✓ "Are these insights truly valuable vs obvious?" (depth assessment)
+
+EXAMPLES OF POOR EVALUATION QUESTIONS:
+✗ "What were the key insights from your meeting?" (asking user to do AI's job)
+
+ANALYSIS & OUTPUT FORMAT:
+
+STEP 2: Generate output in this EXACT JSON format:
+{{
+  "questions": [
+    {{
+      "id": "q1",
+      "text": "Sharp evaluation question (max 150 chars)",
+      "type": "multiple_choice",
+      "focus_area": "insight_accuracy|insight_depth|confidence_calibration|impact_assessment|quote_relevance|completeness|persona_detection",
+      "options": [
+        {{"value": "spot_on", "label": "Context-specific label for EXCELLENT ACCURACY"}},
+        {{"value": "mostly_right", "label": "Context-specific label for GOOD ACCURACY"}},
+        {{"value": "partially_right", "label": "Context-specific label for PARTIAL ACCURACY"}},
+        {{"value": "missed_key_points", "label": "Context-specific label for POOR ACCURACY"}}
+      ],
+      "rl_value": 0.92
+    }},
+    {{
+      "id": "q2",
+      "text": "Optional second question (max 150 chars)",
+      "type": "multiple_choice",
+      "focus_area": "insight_accuracy|insight_depth|confidence_calibration|impact_assessment|quote_relevance|completeness|persona_detection",
+      "options": [
+        {{"value": "well_calibrated", "label": "Context-specific label"}},
+        {{"value": "mostly_calibrated", "label": "Context-specific label"}},
+        {{"value": "overconfident", "label": "Context-specific label"}},
+        {{"value": "underconfident", "label": "Context-specific label"}}
+      ],
+      "rl_value": 0.88
+    }}
+  ],
+  "analysis_summary": "2-3 sentence summary of transcript analysis quality. Example: 'Extracted {num_insights} insights from {persona_type} conversation with {high_confidence_insights} high-confidence findings. Impact assessment shows {high_impact_insights} actionable insights. Overall: Strong analysis.'"
+}}
+
+IMPORTANT CONSTRAINTS:
+- MUST generate EXACTLY 2 questions
+- Each question MUST be under 150 characters
+- Use "focus_area" with specific names
+- Generate OPTIONS directly
+- Include "analysis_summary"
+- RL values: 0.86-0.94 range
+- Return ONLY valid JSON
+
+Generate the evaluation questions with analysis now:"""
+
+    return prompt
+
 def get_idea_capture_data(ai_request_id: str) -> Dict:
     """Get idea capture data from DynamoDB with improved error handling"""
     try:
@@ -1440,6 +1892,341 @@ def get_match_maker_data(ai_request_id: str, persona_type: str) -> Dict:
         
         return None
 
+def get_survey_analysis_data(ai_request_id: str, form_id: str = None) -> Dict:
+    """
+    Get survey analysis data from DynamoDB using query on composite key.
+
+    IMPORTANT: Unlike other agents, this uses query() not get_item() because
+    the sort key is composite: FORM{id}#SURVEY_ANALYSIS
+
+    Args:
+        ai_request_id: The AI response ID (partition key, same as ai_request_id)
+        form_id: Optional form ID for filtering specific form analysis
+
+    Returns:
+        Dictionary with batch_insights, clusters, sentiment_analysis, executive_summary
+    """
+    try:
+        dynamodb, _, _ = init_aws_clients()
+        if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
+            return None
+
+        table = dynamodb.Table(FORM_RESPONSES_TABLE)
+        logger.info(f"Attempting to query survey analysis for request ID: {ai_request_id}")
+
+        # Build query - use contains for the composite key suffix
+        from boto3.dynamodb.conditions import Key
+
+        if form_id:
+            # Query for specific form
+            composite_key = f'FORM{form_id}#SURVEY_ANALYSIS'
+            response = table.query(
+                KeyConditionExpression=Key('ai_response_id').eq(ai_request_id) & Key('composite').eq(composite_key)
+            )
+        else:
+            # Query all SURVEY_ANALYSIS entries for this request
+            # Note: DynamoDB doesn't support 'contains' in KeyConditionExpression
+            # We need to use begins_with or scan. Let's use scan with filter for now
+            response = table.query(
+                KeyConditionExpression=Key('ai_response_id').eq(ai_request_id),
+                FilterExpression='contains(composite, :suffix)',
+                ExpressionAttributeValues={':suffix': '#SURVEY_ANALYSIS'}
+            )
+
+        if response.get('Items'):
+            # Get the first item (or most recent if multiple)
+            item = response['Items'][0]
+            logger.info(f"Found survey analysis for request ID: {ai_request_id}")
+
+            # Parse the analysis JSON
+            analysis_str = item.get('analysis', '{}')
+            if isinstance(analysis_str, str):
+                analysis = json.loads(analysis_str)
+            else:
+                analysis = analysis_str
+
+            # Extract result structure
+            result = analysis.get('result', {})
+            batch_insights = result.get('batch_insights', {})
+            clusters = result.get('clusters', [])
+            sentiment_analysis = result.get('sentiment_analysis', {})
+            executive_summary = result.get('executive_summary', {})
+
+            logger.info(f"Extracted {len(clusters)} customer segments from survey analysis")
+
+            return {
+                'batch_insights': batch_insights,
+                'clusters': clusters,
+                'sentiment_analysis': sentiment_analysis,
+                'executive_summary': executive_summary,
+                'form_id': item.get('composite', '').split('#')[0].replace('FORM', ''),
+                'timestamp': item.get('timestamp', '')
+            }
+        else:
+            logger.warning(f"No survey analysis found for request ID: {ai_request_id}")
+            st.error(f"❌ No survey analysis data found for request ID: {ai_request_id}")
+            if form_id:
+                st.info(f"💡 Searched for form_id: {form_id}")
+            return None
+
+    except Exception as e:
+        error_msg = f"Error fetching survey analysis data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+
+        if "ResourceNotFoundException" in str(e):
+            st.error("🔍 The FORM_RESPONSES_TABLE might not exist or your credentials don't have access.")
+            st.info("💡 Please check that the table name is correct and your IAM permissions include 'dynamodb:Query'.")
+
+        return None
+
+def get_meeting_summary_data(ai_request_id: str, meeting_id: str, user_id: str, persona_type: str) -> Dict:
+    """
+    Get meeting summary data from DynamoDB using query on composite key.
+
+    IMPORTANT: Uses query() because sort key is composite: USER{user_id}#MEETING{meeting_id}
+
+    Args:
+        ai_request_id: The AI request ID (partition key)
+        meeting_id: Meeting identifier
+        user_id: User identifier
+        persona_type: Either 'SME' or 'FOUNDER'
+
+    Returns:
+        Dictionary with sme_bullet_points or founder_bullet_points, status, timestamp
+    """
+    try:
+        dynamodb, _, _ = init_aws_clients()
+        if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
+            return None
+
+        table = dynamodb.Table(MEETING_SUMMARY_TABLE)
+        logger.info(f"Attempting to query meeting summary for request ID: {ai_request_id}, meeting: {meeting_id}")
+
+        # Build composite sort key
+        from boto3.dynamodb.conditions import Key
+        composite_key = f'USER{user_id}#MEETING{meeting_id}'
+
+        # Execute query
+        response = table.query(
+            KeyConditionExpression=Key('ai_request_id').eq(ai_request_id) & Key('composite').eq(composite_key)
+        )
+
+        if response.get('Items'):
+            item = response['Items'][0]
+            logger.info(f"Found meeting summary for request ID: {ai_request_id}")
+
+            # Parse the summary JSON
+            summary_str = item.get('summary', '{}')
+            if isinstance(summary_str, str):
+                summary = json.loads(summary_str)
+            else:
+                summary = summary_str
+
+            # Extract persona-specific bullet points
+            persona_type_upper = persona_type.upper()
+            if persona_type_upper == 'SME':
+                bullet_points = summary.get('sme_bullet_points', '')
+            elif persona_type_upper == 'FOUNDER':
+                bullet_points = summary.get('founder_bullet_points', '')
+            else:
+                logger.warning(f"Unknown persona type: {persona_type}")
+                bullet_points = ''
+
+            logger.info(f"Extracted {persona_type} meeting summary")
+
+            return {
+                'bullet_points': bullet_points,
+                'persona_type': persona_type_upper,
+                'status': summary.get('status', 'unknown'),
+                'generated_at': summary.get('generated_at', ''),
+                'timestamp': summary.get('timestamp', ''),
+                'meeting_id': meeting_id,
+                'user_id': user_id
+            }
+        else:
+            logger.warning(f"No meeting summary found for request ID: {ai_request_id}, meeting: {meeting_id}")
+            st.error(f"❌ No meeting summary data found")
+            st.info(f"💡 Searched for: ai_request_id={ai_request_id}, user={user_id}, meeting={meeting_id}")
+            return None
+
+    except Exception as e:
+        error_msg = f"Error fetching meeting summary data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+
+        if "ResourceNotFoundException" in str(e):
+            st.error("🔍 The MEETING_SUMMARY_TABLE might not exist or your credentials don't have access.")
+            st.info("💡 Please check that the table name is correct and your IAM permissions include 'dynamodb:Query'.")
+
+        return None
+
+def get_transcript_summary_data(ai_request_id: str, meeting_id: str, user_id: str, persona_type: str) -> Dict:
+    """
+    Get transcript summary data from DynamoDB (same table as meeting summary).
+
+    IMPORTANT: Uses query() because sort key is composite: USER{user_id}#MEETING{meeting_id}
+
+    Args:
+        ai_request_id: The AI request ID (partition key)
+        meeting_id: Meeting identifier
+        user_id: User identifier
+        persona_type: One of 'peer', 'sme', or 'founder'
+
+    Returns:
+        Dictionary with insights array, quotes array, persona_type
+    """
+    try:
+        dynamodb, _, _ = init_aws_clients()
+        if not dynamodb:
+            st.error("❌ Cannot access DynamoDB. AWS clients not initialized properly.")
+            return None
+
+        table = dynamodb.Table(MEETING_SUMMARY_TABLE)
+        logger.info(f"Attempting to query transcript summary for request ID: {ai_request_id}, meeting: {meeting_id}")
+
+        # Build composite sort key
+        from boto3.dynamodb.conditions import Key
+        composite_key = f'USER{user_id}#MEETING{meeting_id}'
+
+        # Execute query
+        response = table.query(
+            KeyConditionExpression=Key('ai_request_id').eq(ai_request_id) & Key('composite').eq(composite_key)
+        )
+
+        if response.get('Items'):
+            item = response['Items'][0]
+            logger.info(f"Found transcript summary for request ID: {ai_request_id}")
+
+            # Parse the transcript_summary JSON
+            transcript_str = item.get('transcript_summary', '{}')
+            if isinstance(transcript_str, str):
+                transcript = json.loads(transcript_str)
+            else:
+                transcript = transcript_str
+
+            # Extract insights and quotes
+            insights = transcript.get('insights', [])
+            quotes = transcript.get('quotes', [])
+            detected_persona = transcript.get('persona_type', persona_type)
+
+            logger.info(f"Extracted {len(insights)} insights and {len(quotes)} quotes from transcript")
+
+            return {
+                'insights': insights,
+                'quotes': quotes,
+                'persona_type': detected_persona,
+                'meeting_id': meeting_id,
+                'user_id': user_id,
+                'timestamp': item.get('timestamp', '')
+            }
+        else:
+            logger.warning(f"No transcript summary found for request ID: {ai_request_id}, meeting: {meeting_id}")
+            st.error(f"❌ No transcript summary data found")
+            st.info(f"💡 Searched for: ai_request_id={ai_request_id}, user={user_id}, meeting={meeting_id}")
+            return None
+
+    except Exception as e:
+        error_msg = f"Error fetching transcript summary data: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+
+        if "ResourceNotFoundException" in str(e):
+            st.error("🔍 The MEETING_SUMMARY_TABLE might not exist or your credentials don't have access.")
+            st.info("💡 Please check that the table name is correct and your IAM permissions include 'dynamodb:Query'.")
+
+        return None
+
+def save_feedback_to_dynamodb(stage: str, ai_request_id: str, responses: Dict,
+                               questions: List[Dict], analysis_summary: str,
+                               additional_metadata: Dict = None) -> bool:
+    """
+    Save feedback responses to DynamoDB feedback table.
+
+    Stores data in a column named after the stage (e.g., 'idea_capture', 'survey_analysis').
+    If the ai_request_id already exists, updates that stage's column.
+
+    Table structure:
+    - Partition key: ai_request_id
+    - Columns: idea_capture, lens_selector, survey_generator, 360_report,
+               social_lens, match_maker, survey_analysis, meeting_summary,
+               transcript_summary (each contains feedback data for that stage)
+
+    Args:
+        stage: The AI agent stage name
+        ai_request_id: The AI request ID (partition key)
+        responses: Dictionary of question_id -> selected_value
+        questions: List of question objects with metadata
+        analysis_summary: The AI-generated analysis summary
+        additional_metadata: Optional dict with stage-specific metadata
+
+    Returns:
+        True if saved successfully, False otherwise
+    """
+    try:
+        dynamodb, _, _ = init_aws_clients()
+        if not dynamodb:
+            st.error("❌ Cannot access DynamoDB for saving feedback")
+            return False
+
+        table = dynamodb.Table(FEEDBACK_TABLE)
+        timestamp = datetime.now().isoformat()
+
+        # Enrich responses with question metadata
+        enriched_responses = []
+        for question in questions:
+            q_id = question.get('id')
+            if q_id in responses:
+                enriched_responses.append({
+                    'question_id': q_id,
+                    'question_text': question.get('text', ''),
+                    'focus_area': question.get('focus_area', ''),
+                    'selected_value': responses[q_id],
+                    'selected_label': next(
+                        (opt['label'] for opt in question.get('options', [])
+                         if opt['value'] == responses[q_id]),
+                        ''
+                    ),
+                    'rl_value': question.get('rl_value', 0.0)
+                })
+
+        # Build the stage-specific feedback data
+        stage_data = {
+            'responses': enriched_responses,
+            'analysis_summary': analysis_summary,
+            'timestamp': timestamp,
+            'num_questions': len(questions),
+            'num_responses': len(responses)
+        }
+
+        # Add metadata if provided
+        if additional_metadata:
+            stage_data['metadata'] = additional_metadata
+
+        # Update the item - use UpdateExpression to set/update the specific stage column
+        # This allows multiple stages to be stored in the same item
+        table.update_item(
+            Key={'ai_request_id': ai_request_id},
+            UpdateExpression=f'SET #{stage} = :stage_data',
+            ExpressionAttributeNames={
+                f'#{stage}': stage  # Use expression attribute names to avoid reserved words
+            },
+            ExpressionAttributeValues={
+                ':stage_data': stage_data
+            }
+        )
+
+        logger.info(f"✓ Saved feedback for stage '{stage}' to column '{stage}', request ID: {ai_request_id}")
+        return True
+
+    except Exception as e:
+        error_msg = f"Error saving feedback to DynamoDB: {str(e)}"
+        logger.error(error_msg)
+        st.error(f"❌ {error_msg}")
+        return False
+
 def generate_feedback_questions(stage: str, ai_request_id: str, persona_type: str = None) -> List[Dict]:
     """
     Generate feedback questions using two-stage AI generation:
@@ -1523,6 +2310,61 @@ def generate_feedback_questions(stage: str, ai_request_id: str, persona_type: st
                 match_name = data['selected_match'].get('name', 'Unknown')
                 context_summary = f"Matched {match_name} ({persona_type}) with {match_score:.0%} confidence"
 
+    elif stage == 'survey_analysis':
+        # Check if form_id is provided (optional)
+        form_id = st.session_state.get('form_id', None)
+        data = get_survey_analysis_data(ai_request_id, form_id)
+        if data:
+            prompt = build_survey_analysis_prompt(
+                data['batch_insights'],
+                data['clusters'],
+                data['sentiment_analysis'],
+                data['executive_summary']
+            )
+            agent_name = "Survey Analysis Agent"
+            num_segments = len(data['clusters'])
+            primary_segment = data['executive_summary'].get('primary_segment', 'Unknown')
+            context_summary = f"Identified {num_segments} customer segments, primary: {primary_segment}"
+
+    elif stage == 'meeting_summary':
+        # Require meeting_id, user_id, and persona_type
+        meeting_id = st.session_state.get('meeting_id')
+        user_id = st.session_state.get('user_id')
+
+        if not all([meeting_id, user_id, persona_type]):
+            st.error("❌ Missing required inputs: meeting_id, user_id, or persona_type")
+            return {"questions": [], "analysis_summary": "Missing required inputs"}
+
+        data = get_meeting_summary_data(ai_request_id, meeting_id, user_id, persona_type)
+        if data:
+            prompt = build_meeting_summary_prompt(
+                data['bullet_points'],
+                data['persona_type'],
+                data['meeting_id']
+            )
+            agent_name = "Meeting Summary Agent"
+            context_summary = f"{data['persona_type']} meeting prep for meeting {meeting_id}"
+
+    elif stage == 'transcript_summary':
+        # Require meeting_id, user_id, and persona_type
+        meeting_id = st.session_state.get('meeting_id')
+        user_id = st.session_state.get('user_id')
+
+        if not all([meeting_id, user_id, persona_type]):
+            st.error("❌ Missing required inputs: meeting_id, user_id, or persona_type")
+            return {"questions": [], "analysis_summary": "Missing required inputs"}
+
+        data = get_transcript_summary_data(ai_request_id, meeting_id, user_id, persona_type)
+        if data:
+            prompt = build_transcript_summary_prompt(
+                data['insights'],
+                data['quotes'],
+                data['persona_type']
+            )
+            agent_name = "Transcript Summary Agent"
+            num_insights = len(data['insights'])
+            context_summary = f"Extracted {num_insights} insights from {data['persona_type']} conversation"
+
     # If no data or prompt could be built, return empty dict
     if not prompt or not data:
         return {"questions": [], "analysis_summary": "No data available for this stage and request ID."}
@@ -1599,7 +2441,8 @@ with st.sidebar:
     # Stage selection
     stage = st.selectbox(
         "Select AI Agent Stage",
-        ["idea_capture", "lens_selector", "survey_generator", "360_report", "social_lens", "match_maker"],
+        ["idea_capture", "lens_selector", "survey_generator", "360_report", "social_lens",
+         "match_maker", "survey_analysis", "meeting_summary", "transcript_summary"],
         index=0,
         key="stage_select"
     )
@@ -1619,7 +2462,55 @@ with st.sidebar:
             ["SME", "FOUNDER", "RESPONDENT"],
             key="persona_type_select"
         )
-    
+
+    # Additional inputs for survey_analysis
+    if stage == "survey_analysis":
+        form_id = st.text_input(
+            "Form ID (optional)",
+            value="",
+            key="form_id_input",
+            help="Leave blank to analyze all forms for this request"
+        )
+        if form_id:
+            st.session_state.form_id = form_id
+
+    # Additional inputs for meeting_summary and transcript_summary
+    if stage in ["meeting_summary", "transcript_summary"]:
+        meeting_id = st.text_input(
+            "Meeting ID",
+            value="",
+            key="meeting_id_input",
+            help="Required: Meeting identifier"
+        )
+        st.session_state.meeting_id = meeting_id
+
+        user_id = st.text_input(
+            "User ID",
+            value="",
+            key="user_id_input",
+            help="Required: User identifier"
+        )
+        st.session_state.user_id = user_id
+
+        if stage == "meeting_summary":
+            persona_type = st.selectbox(
+                "Persona Type",
+                ["SME", "FOUNDER"],
+                key="persona_type_meeting_select",
+                help="Select the persona type for meeting summary"
+            )
+        else:  # transcript_summary
+            persona_type = st.selectbox(
+                "Persona Type",
+                ["peer", "sme", "founder"],
+                key="persona_type_transcript_select",
+                help="Select the persona type for transcript analysis"
+            )
+
+        # Validation warning
+        if not meeting_id or not user_id:
+            st.warning("⚠️ Meeting ID and User ID are required for this stage")
+
     # Generate button
     generate_button = st.button(
         "Generate Feedback Questions",
@@ -1637,7 +2528,8 @@ with st.expander("🔍 AWS System Status", expanded=False):
     try:
         dynamodb, s3, bedrock_runtime = init_aws_clients()
         if dynamodb and s3 and bedrock_runtime:
-            table_names = [IDEAS_TABLE, FINALIZE_REPORT_TABLE, SOCIAL_LENS_TABLE]
+            table_names = [IDEAS_TABLE, FINALIZE_REPORT_TABLE, SOCIAL_LENS_TABLE,
+                          FORM_RESPONSES_TABLE, MEETING_SUMMARY_TABLE, FEEDBACK_TABLE]
             resource_status = check_aws_resources_exist(dynamodb, s3, bedrock_runtime, table_names, MATCH_MAKING_BUCKET)
             
             status_message = get_resource_status_message(resource_status)
@@ -1730,13 +2622,54 @@ with col1:
         
         # Submit button
         if st.button("Submit Feedback", type="primary", use_container_width=True):
-            st.success("Feedback submitted successfully!")
-            st.json({
-                'stage': st.session_state.current_stage,
-                'ai_request_id': st.session_state.ai_request_id,
-                'responses': st.session_state.responses,
-                'timestamp': datetime.now().isoformat()
-            })
+            # Prepare stage-specific metadata
+            metadata = {}
+
+            if st.session_state.current_stage == 'survey_analysis':
+                if st.session_state.get('form_id'):
+                    metadata['form_id'] = st.session_state.form_id
+
+            elif st.session_state.current_stage in ['meeting_summary', 'transcript_summary']:
+                if st.session_state.get('meeting_id'):
+                    metadata['meeting_id'] = st.session_state.meeting_id
+                if st.session_state.get('user_id'):
+                    metadata['user_id'] = st.session_state.user_id
+                if st.session_state.get('persona_type'):
+                    metadata['persona_type'] = st.session_state.persona_type
+
+            elif st.session_state.current_stage == 'match_maker':
+                if st.session_state.get('persona_type'):
+                    metadata['persona_type'] = st.session_state.persona_type
+
+            # Save to DynamoDB
+            success = save_feedback_to_dynamodb(
+                stage=st.session_state.current_stage,
+                ai_request_id=st.session_state.ai_request_id,
+                responses=st.session_state.responses,
+                questions=st.session_state.questions,
+                analysis_summary=st.session_state.get('analysis_summary', ''),
+                additional_metadata=metadata if metadata else None
+            )
+
+            if success:
+                st.success(f"✅ Feedback for '{st.session_state.current_stage}' submitted and saved!")
+
+                # Display what was saved
+                st.subheader("Saved Feedback:")
+                st.json({
+                    'ai_request_id': st.session_state.ai_request_id,
+                    'stage_column': st.session_state.current_stage,
+                    'num_responses': len(st.session_state.responses),
+                    'metadata': metadata,
+                    'timestamp': datetime.now().isoformat()
+                })
+
+                # Optionally clear responses for next evaluation
+                if st.checkbox("Clear responses for next agent evaluation?"):
+                    st.session_state.responses = {}
+                    st.rerun()
+            else:
+                st.error("❌ Failed to save feedback. Please try again.")
 
 with col2:
     st.header("System Info")
@@ -1746,13 +2679,26 @@ with col2:
     st.write(f"**Request ID:** {ai_request_id}")
     if persona_type:
         st.write(f"**Persona Type:** {persona_type}")
-    
+
+    # Display new stage-specific inputs
+    if stage == "survey_analysis" and st.session_state.get('form_id'):
+        st.write(f"**Form ID:** {st.session_state.form_id}")
+
+    if stage in ["meeting_summary", "transcript_summary"]:
+        if st.session_state.get('meeting_id'):
+            st.write(f"**Meeting ID:** {st.session_state.meeting_id}")
+        if st.session_state.get('user_id'):
+            st.write(f"**User ID:** {st.session_state.user_id}")
+
     st.subheader("Model Configuration")
     st.write(f"**Bedrock Model:** {BEDROCK_MODEL_ID}")
     st.write(f"**Ideas Table:** {IDEAS_TABLE}")
     st.write(f"**Report Table:** {FINALIZE_REPORT_TABLE}")
     st.write(f"**Social Table:** {SOCIAL_LENS_TABLE}")
     st.write(f"**S3 Bucket:** {MATCH_MAKING_BUCKET}")
+    st.write(f"**Form Responses Table:** {FORM_RESPONSES_TABLE}")
+    st.write(f"**Meeting Summary Table:** {MEETING_SUMMARY_TABLE}")
+    st.write(f"**Feedback Table:** {FEEDBACK_TABLE}")
     
     st.subheader("Session State")
     if st.session_state.current_stage:
