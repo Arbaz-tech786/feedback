@@ -2208,7 +2208,9 @@ def save_feedback_to_dynamodb(stage: str, ai_request_id: str, responses: Dict,
                 enriched_responses.append({
                     'question_id': q_id,
                     'question_text': question.get('text', ''),
+                    'question_type': question.get('type', 'multiple_choice'),
                     'focus_area': question.get('focus_area', ''),
+                    'all_options': question.get('options', []),
                     'selected_value': responses[q_id],
                     'selected_label': next(
                         (opt['label'] for opt in question.get('options', [])
