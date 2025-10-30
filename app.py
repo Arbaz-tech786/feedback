@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
 import logging
+from decimal import Decimal
 from aws_config_fix import init_aws_clients_with_retry, check_aws_resources_exist, get_resource_status_message
 
 # Configure logging
@@ -2139,6 +2140,31 @@ def get_transcript_summary_data(ai_request_id: str, meeting_id: str, user_id: st
 
         return None
 
+def convert_floats_to_decimal(obj):
+    """
+    Recursively convert all float values in a data structure to Decimal for DynamoDB compatibility.
+
+    DynamoDB doesn't support Python's native float type. This function converts:
+    - float -> Decimal
+    - dict -> recursively process all values
+    - list -> recursively process all items
+    - other types -> return as-is
+
+    Args:
+        obj: Any Python object (dict, list, float, int, str, etc.)
+
+    Returns:
+        The same structure with all floats converted to Decimal
+    """
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {key: convert_floats_to_decimal(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_floats_to_decimal(item) for item in obj]
+    else:
+        return obj
+
 def save_feedback_to_dynamodb(stage: str, ai_request_id: str, responses: Dict,
                                questions: List[Dict], analysis_summary: str,
                                additional_metadata: Dict = None) -> bool:
@@ -2204,6 +2230,9 @@ def save_feedback_to_dynamodb(stage: str, ai_request_id: str, responses: Dict,
         # Add metadata if provided
         if additional_metadata:
             stage_data['metadata'] = additional_metadata
+
+        # Convert all float values to Decimal for DynamoDB compatibility
+        stage_data = convert_floats_to_decimal(stage_data)
 
         # Update the item - use UpdateExpression to set/update the specific stage column
         # This allows multiple stages to be stored in the same item
